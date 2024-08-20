@@ -974,16 +974,20 @@ struct __attribute__((packed)) CanMessageBoardStatus
 			 hasClosedLoop : 1,
 			 hasInductiveSensor : 1,
 			 zero : 10,							// reserved for future use
-			 underVoltage : 1,
+			 hasMovementDelay : 1,
 			 numAnalogHandles : 3,				// how many instances of AnaloghandleData we append
 			 zero2 : 12;
-	int32_t neverUsedRam;
+	union
+	{
+		int32_t neverUsedRam;					// this field present if hasMovementDelay is false
+		uint32_t movementDelay;					// this field present if hasMovementDelay is true
+	};
 	MinCurMax values[3];						// values of none, some or all of Vin, V12 and CPU temperature
 	// After the last present MinCurMax value the data for some analog handles follows (max 4 if all of Vin/V12/mcuTemp are supported)
 
 	void Clear() noexcept
 	{
-		hasVin = hasV12 = hasMcuTemp = underVoltage = hasAccelerometer = hasClosedLoop = hasInductiveSensor = false;
+		hasVin = hasV12 = hasMcuTemp = hasMovementDelay = hasAccelerometer = hasClosedLoop = hasInductiveSensor = false;
 		zero = zero2 = numAnalogHandles = 0;
 	}
 
@@ -991,6 +995,11 @@ struct __attribute__((packed)) CanMessageBoardStatus
 	{
 		const unsigned int numMinCurMaxValues = hasVin + hasV12 + hasMcuTemp;
 		return 2 * sizeof(uint32_t) + numMinCurMaxValues * sizeof(values[0]);
+	}
+
+	size_t GetMaxAnalogHandleSpace() const noexcept
+	{
+		return 64 - GetAnalogHandlesOffset();
 	}
 
 	size_t GetActualDataLength() const noexcept
